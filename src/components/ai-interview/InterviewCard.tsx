@@ -1,55 +1,135 @@
-import React from 'react';
-import { MoreVertical, Calendar, Users } from 'lucide-react';
+import React, { useState } from "react";
+import { Copy, UserPlus, MoreVertical, Info } from "lucide-react";
+import InviteModal from "./modals/InviteModal";
 
-interface InterviewCardProps {
-  title: string;
-  description: string;
-  date: string;
-  candidates: number;
-  skills: string[];
+interface Technology {
+  name: string;
+  color: string;
 }
 
-const InterviewCard: React.FC<InterviewCardProps> = ({
-  title,
-  description,
-  date,
-  candidates,
-  skills,
-}) => {
+interface Interview {
+  id: number;
+  title: string;
+  technologies: Technology[];
+  status: string;
+  invited: number;
+  taken: number;
+  createdOn: string;
+  hasOpenJob: boolean;
+  codingExercise?: boolean;
+  highlighted?: boolean;
+}
+
+export const InterviewCard = ({ interview }: { interview: Interview }) => {
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+
+  const handleInvite = () => {
+    setIsInviteModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsInviteModalOpen(false);
+  };
+
+  const handleInviteSuccess = (count: number) => {
+    // In a real app, you would update this data from the API
+    interview.invited += count;
+    setIsInviteModalOpen(false);
+  };
+
   return (
-    <div className="card p-4 hover:shadow-md transition-shadow">
-      <div className="flex justify-between items-start">
-        <h3 className="font-semibold">{title}</h3>
-        <button className="text-gray-500 hover:text-gray-700">
-          <MoreVertical size={20} />
-        </button>
-      </div>
-      
-      <p className="mt-2 text-sm text-gray-600 line-clamp-2">{description}</p>
-      
-      <div className="mt-3 flex flex-wrap gap-1">
-        {skills.map((skill, index) => (
-          <span 
-            key={index} 
-            className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800"
-          >
-            {skill}
+    <>
+      <div
+        className={`bg-white border border-gray-100 rounded-lg p-5 hover:shadow-md transition-shadow duration-200 ${
+          interview.highlighted ? "border-l-4 border-l-amber-400" : ""
+        }`}
+      >
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <div className="flex items-start justify-between mb-3">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {interview.title}
+              </h3>
+              <button className="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-1">
+                <MoreVertical size={18} />
+              </button>
+            </div>
+
+            {interview.highlighted && (
+              <div className="flex items-center space-x-1.5 text-amber-600 mb-3">
+                <Info size={16} />
+                <span className="text-sm">Front-end Developer (React.js)</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-4">
+          {interview.technologies.map((tech, index) => (
+            <span
+              key={index}
+              className={`text-xs px-2.5 py-1 rounded-md font-medium ${tech.color}`}
+            >
+              {tech.name}
+            </span>
+          ))}
+
+          {interview.codingExercise && (
+            <span className="text-xs px-2.5 py-1 rounded-md bg-gray-100 text-gray-700 font-medium flex items-center">
+              <span>Coding exercise</span>
+              <Info size={14} className="ml-1.5 text-gray-500" />
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center mb-4">
+          <span className="px-3 py-1 rounded-full bg-green-50 text-green-700 text-sm font-medium">
+            {interview.status}
           </span>
-        ))}
-      </div>
-      
-      <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
-        <div className="flex items-center gap-1">
-          <Calendar size={16} />
-          <span>{date}</span>
         </div>
-        
-        <div className="flex items-center gap-1">
-          <Users size={16} />
-          <span>{candidates} candidates</span>
+
+        <div className="flex items-center justify-between py-3 border-t border-gray-100">
+          <div className="flex items-center space-x-2 text-sm text-gray-500">
+            <span>Invited: {interview.invited}</span>
+            <span>•</span>
+            <span>Completed: {interview.taken}</span>
+          </div>
+
+          <div className="flex space-x-3">
+            <button className="text-sm text-blue-600 hover:text-blue-800 flex items-center transition-colors duration-200">
+              <Copy size={16} className="mr-1.5" />
+              <span>Copy link</span>
+            </button>
+            <button
+              onClick={handleInvite}
+              className="text-sm text-blue-600 hover:text-blue-800 flex items-center transition-colors duration-200"
+            >
+              <UserPlus size={16} className="mr-1.5" />
+              <span>Invite</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center pt-3 border-t border-gray-100 text-sm">
+          <span className="text-gray-500">
+            Created on {interview.createdOn}
+          </span>
+          {interview.hasOpenJob && (
+            <button className="text-blue-600 hover:text-blue-800 transition-colors duration-200 font-medium">
+              Connect with Job
+            </button>
+          )}
         </div>
       </div>
-    </div>
+
+      {isInviteModalOpen && (
+        <InviteModal
+          onClose={handleCloseModal}
+          interviewTitle={interview.title}
+          onSuccess={handleInviteSuccess}
+        />
+      )}
+    </>
   );
 };
 
