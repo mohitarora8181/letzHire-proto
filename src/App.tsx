@@ -10,10 +10,16 @@ import CandidateDetailsPage from "./pages/CandidateDetailsPage";
 import StudentCall from "./pages/StudentCall";
 import StudentLayout from "./components/StudentLayout";
 import InterviewListPage from "./components/ai-interview/InterviewListPage";
+import Login from "./pages/auth/Login";
+import Signup from "./pages/auth/Signup";
 
 function App() {
   return (
     <Routes>
+
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+
       <Route path="/" element={<Layout />}>
         <Route path="search" element={<SearchPage />} />
         <Route path="jobs" element={<OpenJobsPage />} />
