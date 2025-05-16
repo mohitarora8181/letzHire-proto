@@ -7,6 +7,8 @@ import { InterviewSettings } from "../interview-steps/InterviewSettings";
 import { DefinedSkills } from "../interview-steps/DefinedSkills";
 import { ReviewInterview } from "../interview-steps/ReviewInterview";
 import { InterviewSuccess } from "../interview-steps/InterviewSuccess";
+import { db } from "../../../firebase"; // adjust to your Firebase config path
+import { collection, addDoc } from "firebase/firestore";
 
 interface CreateInterviewModalProps {
   isOpen: boolean;
@@ -35,10 +37,38 @@ export const CreateInterviewModal: React.FC<CreateInterviewModalProps> = ({
     setFormData((prev) => ({ ...prev, ...data }));
   };
 
-  const handleNext = () => {
-    if(currentStep == totalSteps-1){
-      console.log(formData);
+  const handleNext = async () => {
+    if (currentStep === totalSteps - 1) {
+      try {
+        const newInterview = {
+          title: formData.name,
+          type: formData.type,
+          createdOn: new Date().toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          }),
+          technologies: formData.skills.map((skill) => ({
+            name: skill.name,
+            color: "bg-blue-100 text-blue-800", // You can adjust colors dynamically if needed
+          })),
+          language: formData.language,
+          proctoring: formData.proctoring,
+          codingExercise: formData.codingExercise,
+          customQuestions: formData.customQuestions,
+          duration: formData.duration,
+          invited: 0,
+          taken: 0,
+          hasOpenJob: false,
+        };
+
+        await addDoc(collection(db, "interviews"), newInterview);
+        console.log("Interview saved to Firebase!");
+      } catch (error) {
+        console.error("Error saving interview:", error);
+      }
     }
+
     if (currentStep < totalSteps) {
       setCurrentStep((prev) => prev + 1);
     }

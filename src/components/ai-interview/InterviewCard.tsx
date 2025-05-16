@@ -37,6 +37,19 @@ export const InterviewCard = ({ interview }: { interview: Interview }) => {
     setIsInviteModalOpen(false);
   };
 
+  const handleCopyLink = () => {
+    const link = `${window.location.origin}/ai-interview/${interview.id}`;
+    navigator.clipboard
+      .writeText(link)
+      .then(() => {
+        // Optionally, you can show a toast or alert here:
+        alert("Interview link copied to clipboard!");
+      })
+      .catch(() => {
+        alert("Failed to copy the link.");
+      });
+  };
+
   return (
     <>
       <div
@@ -96,7 +109,10 @@ export const InterviewCard = ({ interview }: { interview: Interview }) => {
           </div>
 
           <div className="flex space-x-3">
-            <button className="text-sm text-blue-600 hover:text-blue-800 flex items-center transition-colors duration-200">
+            <button
+              className="text-sm text-blue-600 hover:text-blue-800 flex items-center transition-colors duration-200"
+              onClick={handleCopyLink}
+            >
               <Copy size={16} className="mr-1.5" />
               <span>Copy link</span>
             </button>
@@ -125,6 +141,7 @@ export const InterviewCard = ({ interview }: { interview: Interview }) => {
       {isInviteModalOpen && (
         <InviteModal
           onClose={handleCloseModal}
+          interviewId={interview.id.toString()}
           interviewTitle={interview.title}
           onSuccess={handleInviteSuccess}
         />

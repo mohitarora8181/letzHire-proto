@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { X, AlertCircle, CheckCircle } from "lucide-react";
 import CandidateForm from "../CandidateForm";
+import { db } from "../../../firebase";
+import { collection, addDoc } from "firebase/firestore";
 
 interface Candidate {
   name: string;
@@ -11,6 +13,7 @@ interface Candidate {
 interface InviteModalProps {
   onClose: () => void;
   interviewTitle: string;
+  interviewId: string; // New
   onSuccess: (count: number) => void;
 }
 
@@ -24,6 +27,7 @@ interface FormErrors {
 const InviteModal: React.FC<InviteModalProps> = ({
   onClose,
   interviewTitle,
+  interviewId,
   onSuccess,
 }) => {
   const [candidates, setCandidates] = useState<Candidate[]>([
@@ -106,23 +110,34 @@ const InviteModal: React.FC<InviteModalProps> = ({
     return isValid;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (validateForm()) {
       setIsSubmitting(true);
 
-      // Simulate API call
-      setTimeout(() => {
+      try {
+        const promises = candidates.map((candidate) =>
+          addDoc(collection(db, "interviews", interviewId, "candidates"), {
+            name: candidate.name,
+            email: candidate.email,
+            invitedAt: new Date(),
+          })
+        );
+
+        await Promise.all(promises);
+
         setShowSuccess(true);
 
-        // Close modal after showing success
         setTimeout(() => {
           onSuccess(candidates.length);
         }, 1500);
-
+      } catch (error) {
+        console.error("Error inviting candidates:", error);
+        alert("Failed to invite candidates. Please try again.");
+      } finally {
         setIsSubmitting(false);
-      }, 800);
+      }
     }
   };
 

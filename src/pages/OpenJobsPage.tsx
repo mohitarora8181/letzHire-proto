@@ -1,59 +1,47 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, Filter } from "lucide-react";
 import Button from "../components/common/Button";
 import Input from "../components/common/Input";
 import JobCard from "../components/jobs/JobCard";
 import CreateJobModal from "../components/jobs/CreateJobModal";
 import { db } from "../firebase";
-import { collection, addDoc, Timestamp } from "firebase/firestore";
-
-const mockJobs = [
-  {
-    id: "1",
-    title: "Front-end Developer (React.js)",
-    date: "May 11, 2025",
-    owner: "Nirmal Kumar Meher",
-    applicants: 31,
-    vetted: 0,
-    jobType: ["Full Time", "Remote"],
-    budget: "$100.00 - $200.00",
-    skills: ["1 skill"],
-    openings: 1,
-  },
-  {
-    id: "2",
-    title: "Senior React Native Developer",
-    date: "May 10, 2025",
-    owner: "Priya Sharma",
-    applicants: 24,
-    vetted: 12,
-    jobType: ["Contract", "Remote"],
-    budget: "$90.00 - $120.00",
-    skills: ["React Native", "TypeScript"],
-    openings: 2,
-  },
-  {
-    id: "3",
-    title: "Full Stack JavaScript Engineer",
-    date: "May 8, 2025",
-    owner: "John Smith",
-    applicants: 47,
-    vetted: 19,
-    jobType: ["Full Time", "Hybrid"],
-    budget: "$120.00 - $150.00",
-    skills: ["Node.js", "React", "MongoDB"],
-    openings: 3,
-  },
-];
+import {
+  collection,
+  addDoc,
+  getDocs,
+  Timestamp,
+  query,
+  orderBy,
+} from "firebase/firestore";
 
 const OpenJobsPage: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [jobs, setJobs] = useState(mockJobs);
+  const [jobs, setJobs] = useState<any[]>([]);
+
+  // ✅ Fetch jobs from Firestore on mount
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const q = query(collection(db, "jobs"), orderBy("date", "desc")); // optional: sort by date
+        const querySnapshot = await getDocs(q);
+
+        const jobsData = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        setJobs(jobsData);
+      } catch (error) {
+        console.error("Error fetching jobs: ", error);
+      }
+    };
+
+    fetchJobs();
+  }, []);
 
   const handleCreateJob = async (jobData: any) => {
     const newJob = {
-      id: (jobs.length + 1).toString(),
       title: jobData.title,
       date: new Date().toLocaleDateString("en-US", {
         month: "short",
@@ -72,12 +60,9 @@ const OpenJobsPage: React.FC = () => {
       openings: parseInt(jobData.hires, 10),
     };
 
-    setJobs([newJob, ...jobs]);
-
     try {
       const docRef = await addDoc(collection(db, "jobs"), newJob);
       console.log("Document written with ID: ", docRef.id);
-
       setJobs([{ id: docRef.id, ...newJob }, ...jobs]);
     } catch (e) {
       console.error("Error adding document: ", e);
@@ -118,9 +103,13 @@ const OpenJobsPage: React.FC = () => {
       </div>
 
       <div className="space-y-4">
-        {jobs.map((job) => (
-          <JobCard key={job.id} {...job} />
-        ))}
+        {jobs
+          .filter((job) =>
+            job.title.toLowerCase().includes(searchQuery.toLowerCase())
+          )
+          .map((job) => (
+            <JobCard key={job.id} {...job} />
+          ))}
       </div>
 
       <CreateJobModal
