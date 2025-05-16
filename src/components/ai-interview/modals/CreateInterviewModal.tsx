@@ -36,6 +36,9 @@ export const CreateInterviewModal: React.FC<CreateInterviewModalProps> = ({
   };
 
   const handleNext = () => {
+    if(currentStep == totalSteps-1){
+      console.log(formData);
+    }
     if (currentStep < totalSteps) {
       setCurrentStep((prev) => prev + 1);
     }

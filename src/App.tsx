@@ -7,6 +7,9 @@ import { InterviewerDashboard } from "./pages/AiInterviewPage";
 import HiredTeamPage from "./pages/HiredTeamPage";
 import JobDetailsPage from "./pages/JobDetailsPage";
 import CandidateDetailsPage from "./pages/CandidateDetailsPage";
+import StudentCall from "./pages/StudentCall";
+import StudentLayout from "./components/StudentLayout";
+import InterviewListPage from "./components/ai-interview/InterviewListPage";
 
 function App() {
   return (
@@ -18,6 +21,11 @@ function App() {
         <Route path="ai-interview" element={<InterviewerDashboard />} />
         <Route path="team" element={<HiredTeamPage />} />
         <Route path="candidate/:id" element={<CandidateDetailsPage />} />
+      </Route>
+      <Route path="/student" element={<StudentLayout />}>
+        <Route path="interviews" element={<InterviewListPage />} />
+        <Route path="interview/:id" element={<StudentCall />} />
+        <Route index element={<InterviewListPage />} />
       </Route>
     </Routes>
   );
