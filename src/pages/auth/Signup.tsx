@@ -6,6 +6,11 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
 } from "firebase/auth";
+import {
+  getFirestore,
+  doc,
+  setDoc
+} from "firebase/firestore";
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();
@@ -55,15 +60,30 @@ const Signup: React.FC = () => {
         formData.password
       );
 
+      const user = userCredential.user;
+
       // Update profile with the full name
-      if (auth.currentUser) {
-        await updateProfile(auth.currentUser, {
-          displayName: formData.name,
-        });
-      }
+      await updateProfile(user, {
+        displayName: formData.name,
+      });
+
+      // Initialize Firestore
+      const db = getFirestore();
+
+      // Create a document in the users collection
+      await setDoc(doc(db, "users", user.uid), {
+        name: formData.name,
+        email: formData.email,
+        isHR: false,
+        createdAt: new Date(),
+        photoURL: user.photoURL || "",
+        uid: user.uid
+      });
+
+      console.log("User created and data saved to Firestore");
 
       // On successful signup, redirect to login or dashboard
-      navigate("/login");
+      navigate("/");
     } catch (error: any) {
       // Handle Firebase errors
       if (error.code === "auth/email-already-in-use") {
@@ -73,6 +93,7 @@ const Signup: React.FC = () => {
       } else if (error.code === "auth/weak-password") {
         setError("Password is too weak.");
       } else {
+        console.error("Error during signup:", error);
         setError("Failed to create account. Please try again.");
       }
     } finally {
@@ -264,9 +285,8 @@ const Signup: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
-                  loading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
-                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150`}
+                className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${loading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
+                  } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150`}
               >
                 {loading ? (
                   <svg

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Filter, Heart } from 'lucide-react';
+import { Filter, Heart, AlertCircle, Loader2 } from 'lucide-react';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
 import CandidateCard from '../components/search/CandidateCard';
 import SearchFilters from '../components/search/SearchFilters';
+import { collection, getDocs, query, where, getFirestore } from 'firebase/firestore';
 
 // Define types for filters
 interface Filters {
@@ -15,83 +16,128 @@ interface Filters {
   countries?: string[];
 }
 
-const mockCandidates = [
-  {
-    id: '1',
-    name: 'Rajesh Kumar',
-    position: 'Software Engineer/Data Scientist',
-    experience: 15,
-    country: 'India',
-    countryFlag: '🇮🇳',
-    skills: ['C++ Algorithm Problem-Solving', 'Data Structures', 'Debugging And Testing'],
-    salary: '₹12,50,000/month',
-    hourlyRate: '₹7,200/h',
-    verified: true,
-    description: 'Deployed advanced caching solutions at Flipkart and developed high-performance data pipelines at Google Bangalore. IIT Delhi alumnus with strong engineering background and expertise in scalable systems.',
-    photo: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-  },
-  {
-    id: '2',
-    name: 'Priya Mehta',
-    position: 'Software Engineer',
-    experience: 9,
-    country: 'India',
-    countryFlag: '🇮🇳',
-    skills: ['Fundamental Mathematics', 'Simplifying Complex Concepts', 'Geometry'],
-    salary: '₹5,80,000/month',
-    hourlyRate: '₹3,350/h',
-    verified: true,
-    description: 'Developed groundbreaking AI-driven algorithms at Amazon India, leveraging a PhD in Mathematics from IISc Bangalore. Previously worked at Infosys with strong engineering skills in machine learning applications.',
-    photo: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-  },
-  {
-    id: '3',
-    name: 'Kiran Verma',
-    position: 'Senior Recruiter',
-    experience: 10,
-    country: 'India',
-    countryFlag: '🇮🇳',
-    skills: ['Technical Recruitment', 'Behavioral Analysis', 'Recruitment Tools'],
-    salary: '₹3,90,000/month',
-    hourlyRate: '₹2,250/h',
-    verified: true,
-    description: 'Expert recruiter specializing in technical talent acquisition with over 10 years of experience in the Indian tech market. Strong background in behavioral analysis and implementation of modern recruitment tools.',
-    photo: 'https://images.pexels.com/photos/2379005/pexels-photo-2379005.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-  }
-];
+// Define candidate interface based on Firestore structure
+interface Candidate {
+  id: string;
+  uid: string;
+  name: string;
+  email: string;
+  photoURL: string;
+  interviews?: Array<{
+    callId: string;
+    completedOn: string;
+    interviewId: string;
+    status: string;
+    title: string;
+  }>;
+  position?: string;
+  experience?: number;
+  country?: string;
+  countryFlag?: string;
+  skills?: string[];
+  salary?: string;
+  hourlyRate?: string;
+  verified?: boolean;
+  description?: string;
+}
 
 const SearchPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<Filters>({});
-  const [filteredCandidates, setFilteredCandidates] = useState(mockCandidates);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [filteredCandidates, setFilteredCandidates] = useState<Candidate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Helper function to parse salary string into number
+  // Fetch students from Firestore
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        setLoading(true);
+        const db = getFirestore();
+
+        // Query Firestore for users where isHR is false
+        const q = query(collection(db, "users"), where("isHR", "==", false));
+        const querySnapshot = await getDocs(q);
+
+        const fetchedCandidates: Candidate[] = [];
+
+        querySnapshot.forEach((doc) => {
+          const userData = doc.data();
+
+          // Transform Firestore data to match the Candidate interface
+          const candidate: Candidate = {
+            id: doc.id,
+            uid: userData.uid || doc.id,
+            name: userData.name || "Unknown",
+            email: userData.email || "",
+            photoURL: userData.photoURL || "https://via.placeholder.com/150",
+            interviews: userData.interviews || [],
+            // Set some default values for fields that might not be in Firestore yet
+            position: userData.position || "Student",
+            experience: userData.experience || 0,
+            country: userData.country || "Unknown",
+            countryFlag: userData.countryFlag || "🌍",
+            skills: userData.skills || [],
+            salary: userData.salary || "Not specified",
+            hourlyRate: userData.hourlyRate || "Not specified",
+            verified: userData.verified || false,
+            description: userData.description || `${userData.name} is a student on our platform with ${userData.interviews?.length || 0} completed interviews.`,
+          };
+
+          fetchedCandidates.push(candidate);
+        });
+
+        setCandidates(fetchedCandidates);
+        setFilteredCandidates(fetchedCandidates);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching students:", err);
+        setError("Failed to load students. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStudents();
+  }, []);
+
+  // Helper function to parse salary string into number (if needed)
   const parseSalary = (salaryString: string): number => {
+    // Handle "Not specified" case
+    if (salaryString === "Not specified") return 0;
+
     // Convert "₹12,50,000/month" to 1250000
-    return parseInt(salaryString.replace(/[₹,/month]/g, ''), 10);
+    return parseInt(salaryString.replace(/[₹,/month]/g, ''), 10) || 0;
   };
 
   // Apply filters and search whenever they change
   useEffect(() => {
-    let results = [...mockCandidates];
+    // Skip filtering if there are no candidates yet
+    if (candidates.length === 0) return;
+
+    let results = [...candidates];
 
     // Apply search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       results = results.filter(candidate =>
         candidate.name.toLowerCase().includes(query) ||
-        candidate.position.toLowerCase().includes(query) ||
-        candidate.description.toLowerCase().includes(query) ||
-        candidate.skills.some(skill => skill.toLowerCase().includes(query))
+        (candidate.position && candidate.position.toLowerCase().includes(query)) ||
+        (candidate.description && candidate.description.toLowerCase().includes(query)) ||
+        (candidate.skills && candidate.skills.some(skill =>
+          skill.toLowerCase().includes(query)
+        )) ||
+        candidate.email.toLowerCase().includes(query)
       );
     }
 
     // Apply filters
     if (activeFilters.skills && activeFilters.skills.length > 0) {
       results = results.filter(candidate =>
-        activeFilters.skills!.some(skill =>
-          candidate.skills.some(candidateSkill =>
+        candidate.skills && activeFilters.skills!.some(skill =>
+          candidate.skills && candidate.skills.some(candidateSkill =>
             candidateSkill.toLowerCase().includes(skill.toLowerCase())
           )
         )
@@ -100,10 +146,11 @@ const SearchPage: React.FC = () => {
 
     if (activeFilters.experienceMin || activeFilters.experienceMax) {
       results = results.filter(candidate => {
-        if (activeFilters.experienceMin && candidate.experience < activeFilters.experienceMin) {
+        const exp = candidate.experience || 0;
+        if (activeFilters.experienceMin && exp < activeFilters.experienceMin) {
           return false;
         }
-        if (activeFilters.experienceMax && candidate.experience > activeFilters.experienceMax) {
+        if (activeFilters.experienceMax && exp > activeFilters.experienceMax) {
           return false;
         }
         return true;
@@ -112,7 +159,7 @@ const SearchPage: React.FC = () => {
 
     if (activeFilters.salaryMin || activeFilters.salaryMax) {
       results = results.filter(candidate => {
-        const candidateSalary = parseSalary(candidate.salary);
+        const candidateSalary = candidate.salary ? parseSalary(candidate.salary) : 0;
         if (activeFilters.salaryMin && candidateSalary < activeFilters.salaryMin) {
           return false;
         }
@@ -125,12 +172,12 @@ const SearchPage: React.FC = () => {
 
     if (activeFilters.countries && activeFilters.countries.length > 0) {
       results = results.filter(candidate =>
-        activeFilters.countries!.includes(candidate.country)
+        candidate.country && activeFilters.countries!.includes(candidate.country)
       );
     }
 
     setFilteredCandidates(results);
-  }, [searchQuery, activeFilters]);
+  }, [searchQuery, activeFilters, candidates]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,6 +188,28 @@ const SearchPage: React.FC = () => {
     setActiveFilters(filters);
     setShowFilters(false);
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 text-blue-500 animate-spin mr-2" />
+        <span className="text-lg text-gray-600">Loading students...</span>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="max-w-6xl mx-auto p-4">
+        <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded flex items-center">
+          <AlertCircle className="h-6 w-6 text-red-400 mr-2" />
+          <p className="text-red-700">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -197,12 +266,24 @@ const SearchPage: React.FC = () => {
           filteredCandidates.map((candidate) => (
             <CandidateCard
               key={candidate.id}
-              {...candidate}
+              id={candidate.uid}
+              name={candidate.name}
+              position={candidate.position || "Student"}
+              experience={candidate.experience || 0}
+              country={candidate.country || "Unknown"}
+              countryFlag={candidate.countryFlag || "🌍"}
+              skills={candidate.skills || []}
+              salary={candidate.salary || "Not specified"}
+              hourlyRate={candidate.hourlyRate || "Not specified"}
+              verified={candidate.verified || false}
+              description={candidate.description || ""}
+              photo={candidate.photoURL || "https://via.placeholder.com/150"}
+              interviews={candidate.interviews}
             />
           ))
         ) : (
           <div className="text-center py-10">
-            <p className="text-gray-500">No candidates match your current filters.</p>
+            <p className="text-gray-500">No students match your current filters.</p>
             {Object.keys(activeFilters).length > 0 && (
               <Button
                 variant="outline"

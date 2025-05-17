@@ -1,138 +1,215 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Play, Heart, Copy, Calendar, Star } from 'lucide-react';
+import { ArrowLeft, Play, Heart, Copy, Calendar, Star, Loader2, ExternalLink, Volume2 } from 'lucide-react';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import Button from '../components/common/Button';
 
-interface Skill {
-  name: string;
-  experience?: string;
-  level?: string;
-}
+// Define your API token
+const VAPI_API_TOKEN = import.meta.env.VITE_VAPI_API_TOKEN || "b33bd21d-c08c-4bc2-a28c-3618737743fa"; // Replace with env variable
 
-interface SoftSkills {
-  level: string;
+interface InterviewData {
+  callId: string;
+  completedOn: string;
+  interviewId: string;
+  status: string;
+  title: string;
 }
 
 interface TranscriptItem {
-  timestamp: string;
-  speaker: string;
-  text: string;
+  role: "user" | "assistant" | "bot" | "system";
+  content: string;
+  message?: string;
+  time?: number;
+  timestamp?: number;
 }
 
-interface Interview {
-  recording: boolean;
-  transcript: TranscriptItem[];
+interface CallData {
+  id: string;
+  endedAt: Date;
+  startedAt: Date;
+  transcript: string;
+  recordingUrl: string;
+  stereoRecordingUrl: string;
+  summary: string;
+  messages: TranscriptItem[];
+  analysis: {
+    summary: string;
+  };
 }
 
 interface Candidate {
-  id: string;
+  uid: string;
   name: string;
-  verified: boolean;
-  position: string;
-  location: string;
-  countryFlag: string;
-  availability: string;
-  experience: string;
-  salary: string;
-  hourlyRate: string;
-  interviewDate: string;
-  bio: string;
-  photo: string;
-  skills: Skill[];
-  softSkills: SoftSkills;
-  interview: Interview;
+  email: string;
+  photoURL: string;
+  position?: string;
+  experience?: number;
+  country?: string;
+  countryFlag?: string;
+  skills?: string[];
+  salary?: string;
+  hourlyRate?: string;
+  verified?: boolean;
+  description?: string;
+  createdAt?: any; // Firestore timestamp
+  interviews?: InterviewData[];
 }
-
-const mockCandidates: Record<string, Candidate> = {
-  '1': {
-    id: '1',
-    name: 'Rajesh Kumar',
-    verified: true,
-    position: 'Software Engineer/Data Scientist',
-    location: 'India',
-    countryFlag: '🇮🇳',
-    availability: 'Available full time',
-    experience: '15+ years exp',
-    salary: '₹12,50,000/month',
-    hourlyRate: '₹7,200/h',
-    interviewDate: 'May 10, 2025',
-    bio: 'Deployed advanced caching solutions at Flipkart and developed high-performance data pipelines at Google Bangalore. IIT Delhi alumnus with strong engineering background and expertise in scalable systems. Profile includes top university education, top company experience, and strong engineering background.',
-    photo: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2',
-    skills: [
-      {
-        name: 'C++ Algorithm Problem-Solving',
-        experience: '15+ yrs experience',
-        level: 'Experienced'
-      },
-      {
-        name: 'Data Structures',
-        experience: '15+ yrs experience',
-        level: 'Experienced'
-      },
-      {
-        name: 'Debugging and Testing',
-        experience: '15+ yrs experience',
-        level: 'Experienced'
-      },
-      {
-        name: 'Coding exercise',
-        level: 'Senior'
-      }
-    ],
-    softSkills: {
-      level: 'B2 (Good)'
-    },
-    interview: {
-      recording: true,
-      transcript: [
-        {
-          timestamp: '00:34',
-          speaker: 'Zara',
-          text: 'Hello! I am micro1\'s AI interviewer. Welcome, I\'m excited to get to know you. Could you briefly introduce yourself?'
-        },
-        {
-          timestamp: '00:42',
-          speaker: 'Candidate',
-          text: 'I\'m currently looking for a job after working at Google Bangalore for 6 years and Flipkart for 3 years before that.'
-        },
-        {
-          timestamp: '00:59',
-          speaker: 'Zara',
-          text: 'Thank you for sharing, Rajesh Kumar. Let\'s delve into the technical part. Imagine you need to design an algorithm in C++ that finds the longest increasing subsequence in a given array of integers. Could you explain the approach?'
-        }
-      ]
-    }
-  }
-};
 
 const CandidateDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeInterview, setActiveInterview] = useState<string | null>(null);
 
+  // New state for handling call data
+  const [callData, setCallData] = useState<CallData | null>(null);
+  const [loadingCall, setLoadingCall] = useState(false);
+  const [callError, setCallError] = useState<string | null>(null);
+
+  // Fetch candidate data from Firestore
   useEffect(() => {
-    if (id && mockCandidates[id]) {
-      setCandidate(mockCandidates[id]);
-      setLoading(false);
-    } else {
-      setLoading(false);
-    }
+    const fetchCandidate = async () => {
+      if (!id) {
+        setError("No candidate ID provided");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const db = getFirestore();
+
+        // Get user document
+        const userDocRef = doc(db, "users", id);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data() as Candidate;
+          setCandidate({
+            ...userData,
+          });
+
+          // If there are interviews, set the first one as active
+          if (userData.interviews && userData.interviews.length > 0) {
+            setActiveInterview(userData.interviews[0].callId);
+          }
+        } else {
+          setError("Candidate not found");
+        }
+      } catch (err) {
+        console.error("Error fetching candidate:", err);
+        setError("Failed to load candidate data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCandidate();
   }, [id]);
 
+  // Fetch call data when active interview changes
+  useEffect(() => {
+    const fetchCallData = async () => {
+      if (!activeInterview) return;
+
+      setLoadingCall(true);
+      setCallError(null);
+
+      try {
+        const response = await fetch(`https://api.vapi.ai/call/${activeInterview}`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${VAPI_API_TOKEN}`
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch interview data: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        setCallData(data);
+      } catch (err) {
+        console.error("Error fetching call data:", err);
+        setCallError("Failed to load interview recording and transcript");
+      } finally {
+        setLoadingCall(false);
+      }
+    };
+
+    fetchCallData();
+  }, [activeInterview]);
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  // Format transcript messages for display
+  const formatMessages = (messages: any[] | undefined) => {
+    if (!messages) return [];
+
+    return messages
+      .filter(msg => {
+        // Filter out system messages and empty messages
+        return (msg.role === 'user' || msg.role === 'bot' || msg.role === 'assistant')
+          && (msg.message || msg.content);
+      })
+      .map(msg => ({
+        role: msg.role === 'bot' ? 'assistant' : msg.role,
+        content: msg.message || msg.content,
+        timestamp: msg.time || msg.timestamp || Date.now()
+      }));
+  };
+
+  // Determine skill levels based on interview count
+  const getSkillLevel = (index: number): string => {
+    const levels = ["Beginner", "Intermediate", "Experienced", "Senior"];
+    return levels[Math.min(index, levels.length - 1)];
+  };
+
   if (loading) {
-    return <div className="text-center py-12">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 text-indigo-500 animate-spin mr-2" />
+        <p className="text-lg">Loading candidate data...</p>
+      </div>
+    );
   }
 
-  if (!candidate) {
+  if (error || !candidate) {
     return (
       <div className="text-center py-12">
-        <p className="text-lg text-gray-700">Candidate not found.</p>
+        <p className="text-lg text-red-600">{error || "Candidate not found."}</p>
         <Link to="/search" className="text-indigo-600 hover:text-indigo-800 font-medium mt-4 inline-block">
           Return to search
         </Link>
       </div>
     );
   }
+
+  // Determine last interview date
+  const lastInterviewDate = candidate.interviews && candidate.interviews.length > 0
+    ? formatDate(candidate.interviews[0].completedOn)
+    : "No interviews yet";
+
+  // Prepare structured skills for display
+  const displaySkills = candidate.skills
+    ? candidate.skills.map((skill, i) => ({
+      name: skill,
+      level: getSkillLevel(i % 4),
+      experience: candidate.experience
+        ? `${Math.max(1, Math.round(candidate.experience / 2))} yrs experience`
+        : undefined
+    }))
+    : [];
+
+  // Get current interview data
+  const currentInterview = candidate.interviews?.find(i => i.callId === activeInterview);
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -143,12 +220,12 @@ const CandidateDetailsPage: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
-          <div className="card p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex flex-col items-center text-center">
               <img
-                src={candidate.photo}
+                src={candidate.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(candidate.name)}&background=random`}
                 alt={candidate.name}
-                className="w-20 h-20 rounded-md object-cover"
+                className="w-20 h-20 rounded-full object-cover shadow-sm border-2 border-gray-100"
               />
 
               <div className="mt-4 flex items-center gap-2">
@@ -163,32 +240,34 @@ const CandidateDetailsPage: React.FC = () => {
               </div>
 
               <div className="text-sm text-gray-600 mt-1">
-                {candidate.position}
+                {candidate.position || "Student"}
               </div>
 
               <div className="text-sm text-gray-600 mt-2">
-                {candidate.location} {candidate.countryFlag}
+                {candidate.country || "Location not specified"} {candidate.countryFlag || "🌎"}
               </div>
 
               <div className="text-sm mt-2">
-                <span className="text-gray-600">Available full time | </span>
-                <span className="text-gray-600">{candidate.experience}</span>
+                <span className="text-gray-600">
+                  {candidate.experience ? `${candidate.experience} years experience` : "Entry level"}
+                </span>
               </div>
 
               <div className="mt-3">
-                <div className="font-semibold">{candidate.salary}</div>
-                <div className="text-sm text-gray-500">({candidate.hourlyRate})</div>
+                <div className="font-semibold">{candidate.email}</div>
+                {candidate.salary && <div className="text-sm text-gray-500">Salary: {candidate.salary}</div>}
+                {candidate.hourlyRate && <div className="text-sm text-gray-500">Rate: {candidate.hourlyRate}</div>}
               </div>
 
               <div className="text-sm text-gray-600 mt-4 flex items-center">
                 <Calendar size={14} className="mr-1" />
-                AI interview completed on {candidate.interviewDate}
+                Last interview: {lastInterviewDate}
               </div>
             </div>
 
             <div className="mt-6">
               <p className="text-sm text-gray-700">
-                {candidate.bio}
+                {candidate.description || `${candidate.name} is a student on our platform with ${candidate.interviews?.length || 0} completed interviews.`}
               </p>
             </div>
 
@@ -205,97 +284,189 @@ const CandidateDetailsPage: React.FC = () => {
             <div className="mt-4 text-center">
               <button className="text-indigo-600 text-sm hover:text-indigo-800 flex items-center justify-center w-full">
                 <Copy size={14} className="mr-1" />
-                Find me candidates like this
+                Find similar candidates
               </button>
             </div>
           </div>
         </div>
 
         <div className="lg:col-span-2">
-          <div className="card p-6 mb-6">
-            <h2 className="text-lg font-semibold mb-4">Interview result summary</h2>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <h2 className="text-lg font-semibold mb-4">Skills Summary</h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {candidate.skills.slice(0, 4).map((skill: any, index: number) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-start">
-                    <div className="mr-3 mt-1 text-indigo-600">
-                      <Star size={18} />
+            {displaySkills.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {displaySkills.map((skill, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-start">
+                      <div className="mr-3 mt-1 text-indigo-600">
+                        <Star size={18} />
+                      </div>
+                      <div>
+                        <div className="font-medium">{skill.name}</div>
+                        {skill.experience && (
+                          <div className="text-sm text-gray-600 mt-1">{skill.experience}</div>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-medium">{skill.name}</div>
-                      {skill.experience && (
-                        <div className="text-sm text-gray-600 mt-1">{skill.experience}</div>
-                      )}
-                    </div>
-                  </div>
-                  {skill.level && (
-                    <div className="mt-2">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${skill.level === 'Experienced' ? 'bg-green-100 text-green-800' :
+                    {skill.level && (
+                      <div className="mt-2">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${skill.level === 'Experienced' ? 'bg-green-100 text-green-800' :
                           skill.level === 'Senior' ? 'bg-indigo-100 text-indigo-800' :
-                            'bg-blue-100 text-blue-800'
-                        }`}>
-                        {skill.level}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                            skill.level === 'Intermediate' ? 'bg-blue-100 text-blue-800' :
+                              'bg-yellow-100 text-yellow-800'
+                          }`}>
+                          {skill.level}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-4">No skills information available</p>
+            )}
 
-            {candidate.softSkills && (
-              <div className="mt-4 border border-gray-200 rounded-lg p-4">
-                <div className="flex items-start">
-                  <div className="mr-3 mt-1 text-indigo-600">
-                    <Star size={18} />
-                  </div>
-                  <div>
-                    <div className="font-medium">Soft skills</div>
-                  </div>
+            <div className="mt-4 border border-gray-200 rounded-lg p-4">
+              <div className="flex items-start">
+                <div className="mr-3 mt-1 text-indigo-600">
+                  <Star size={18} />
                 </div>
-                <div className="mt-2">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    {candidate.softSkills.level}
-                  </span>
+                <div>
+                  <div className="font-medium">Communication skills</div>
                 </div>
               </div>
-            )}
+              <div className="mt-2">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  {candidate.interviews && candidate.interviews.length > 3 ? "Advanced" :
+                    candidate.interviews && candidate.interviews.length > 1 ? "Intermediate" : "Beginner"}
+                </span>
+              </div>
+            </div>
           </div>
 
-          {candidate.interview && (
-            <div className="card p-6">
-              <h2 className="text-lg font-semibold mb-4">Recording of the AI interview</h2>
+          {candidate.interviews && candidate.interviews.length > 0 && (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold mb-4">Interview History</h2>
 
-              {candidate.interview.recording && (
-                <div className="relative aspect-video bg-gray-900 rounded-lg mb-6 flex items-center justify-center">
-                  <button className="w-16 h-16 bg-white bg-opacity-25 rounded-full flex items-center justify-center">
-                    <Play size={30} className="text-white ml-1" />
+              {/* Interview selector */}
+              <div className="flex flex-wrap gap-2 mb-6">
+                {candidate.interviews.map((interview) => (
+                  <button
+                    key={interview.callId}
+                    onClick={() => setActiveInterview(interview.callId)}
+                    className={`px-3 py-2 text-sm rounded-md ${activeInterview === interview.callId
+                      ? 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                  >
+                    {interview.title}
                   </button>
+                ))}
+              </div>
+
+              {activeInterview && loadingCall && (
+                <div className="py-12 text-center">
+                  <Loader2 className="h-8 w-8 text-indigo-500 animate-spin mx-auto mb-4" />
+                  <p className="text-gray-500">Loading interview data...</p>
                 </div>
               )}
 
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="font-medium">TRANSCRIPT</h3>
-                  <button className="text-indigo-600 hover:text-indigo-800">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                    </svg>
-                  </button>
+              {activeInterview && callError && (
+                <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded">
+                  <p className="text-red-700">{callError}</p>
                 </div>
+              )}
 
-                <div className="overflow-y-auto max-h-80 pr-2">
-                  <h4 className="font-semibold mb-2 text-center">C++ Algorithm Problem Solving</h4>
+              {activeInterview && callData && (
+                <>
+                  {/* Interview summary */}
+                  <div className="bg-indigo-50 p-4 rounded-lg mb-6">
+                    <h3 className="font-medium text-indigo-800 mb-2">Summary</h3>
+                    <p className="text-gray-700">{callData.analysis?.summary || callData.summary}</p>
+                  </div>
 
-                  {candidate.interview.transcript.map((item: any, index: number) => (
-                    <div key={index} className="mb-4">
-                      <div className="text-xs text-gray-500 mb-1">{item.timestamp} · {item.speaker}</div>
-                      <p className="text-gray-700">{item.text}</p>
+                  {/* Recording player */}
+                  <div className="relative bg-gray-900 rounded-lg mb-6 p-6">
+                    <div className="flex items-center">
+                      <a
+                        href={callData.recordingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-12 h-12 bg-white bg-opacity-25 rounded-full flex items-center justify-center mr-4"
+                      >
+                        <Play size={24} className="text-white ml-1" />
+                      </a>
+
+                      <div className="text-white">
+                        <div className="font-medium">{currentInterview?.title} Recording</div>
+                        <div className="text-sm text-gray-300 mt-1">
+                          {currentInterview && formatDate(currentInterview.completedOn)}
+                          {callData.endedAt && ` • ${Math.round((new Date(callData.endedAt).getTime() - new Date(callData.startedAt).getTime()) / 1000 / 60)} mins`}
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
+
+                  {/* Transcript */}
+                  <div>
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="font-medium">TRANSCRIPT</h3>
+                      <button
+                        className="text-indigo-600 hover:text-indigo-800 flex items-center"
+                        title="Download transcript"
+                        onClick={() => {
+                          // Create blob and download
+                          const blob = new Blob([callData.transcript], { type: 'text/plain' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${currentInterview?.title}-transcript.txt`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        <ExternalLink size={16} className="mr-1" />
+                        Download transcript
+                      </button>
+                    </div>
+
+                    <div className="overflow-y-auto max-h-[600px] border border-gray-200 rounded-lg">
+                      {/* Formatted transcript messages for better readability */}
+                      {callData.messages && formatMessages(callData.messages).length > 0 ? (
+                        <div className="divide-y divide-gray-100">
+                          {formatMessages(callData.messages).map((item, index) => (
+                            <div key={index} className={`p-4 ${item.role === 'assistant' ? 'bg-gray-50' : 'bg-blue-50'}`}>
+                              <div className="flex items-center mb-2">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${item.role === 'assistant' ? 'bg-indigo-100 text-indigo-800' : 'bg-blue-100 text-blue-800'
+                                  }`}>
+                                  {item.role === 'assistant' ? 'AI' : candidate.name.charAt(0)}
+                                </div>
+                                <div>
+                                  <div className="font-medium">
+                                    {item.role === 'assistant' ? 'AI Interviewer' : candidate.name}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </div>
+                                </div>
+                              </div>
+                              <p className="text-gray-700 pl-10">{item.content}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        /* Raw transcript formatted with line breaks */
+                        <pre className="whitespace-pre-line text-gray-700 p-6 font-sans">
+                          {callData.transcript}
+                        </pre>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

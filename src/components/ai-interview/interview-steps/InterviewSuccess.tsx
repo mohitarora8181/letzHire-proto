@@ -7,7 +7,7 @@ interface InterviewSuccessProps {
 }
 
 export const InterviewSuccess: React.FC<InterviewSuccessProps> = ({
-  interviewLink = "https://www.interview.micro.ai/intro/6fa77f87e-5...",
+  interviewLink = "https://localhost:5173/testing",
   //   onInviteCandidates,
 }) => {
   const [linkCopied, setLinkCopied] = useState(false);

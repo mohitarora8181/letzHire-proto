@@ -1,10 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { getInterviews } from "../api/getInterview";
 import { createInterview } from "../api/createInterview";
-import { Search, Plus, Filter, Download, BarChart } from "lucide-react";
+import { Search, Plus, Filter, Download, BarChart, User, X, Loader2 } from "lucide-react";
 import { StatsCard } from "../components/ai-interview/StatusCard";
 import { InterviewCard } from "../components/ai-interview/InterviewCard";
 import { CreateInterviewModal } from "../components/ai-interview/modals/CreateInterviewModal";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
+
+interface Student {
+  id: string;
+  uid: string;
+  name: string;
+  email: string;
+  photoURL: string;
+  completedOn?: string;
+}
 
 interface InterviewerDashboardProps {
   onCreateInterview?: () => void;
@@ -13,10 +24,16 @@ interface InterviewerDashboardProps {
 export const InterviewerDashboard: React.FC<InterviewerDashboardProps> = ({
   onCreateInterview,
 }) => {
+  const navigate = useNavigate();
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [interviews, setInterviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
+  const [selectedInterview, setSelectedInterview] = useState<any>(null);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
 
   const [total, setTotal] = useState(0);
   const [active, setActive] = useState(0);
@@ -51,14 +68,77 @@ export const InterviewerDashboard: React.FC<InterviewerDashboardProps> = ({
     }
   };
 
-  const handleInterviewCreate = async (interviewData: any) => {
+  const handleViewStudents = async (interview: any) => {
+    setSelectedInterview(interview);
+    setIsStudentModalOpen(true);
+    setLoadingStudents(true);
+
     try {
-      const created = await createInterview(interviewData);
-      setInterviews((prev) => [created, ...prev]);
-      setIsCreateModalOpen(false);
+      const db = getFirestore();
+
+      if (!interview.students || interview.students.length === 0) {
+        setStudents([]);
+        setLoadingStudents(false);
+        return;
+      }
+
+      const studentPromises = interview.students.map(async (studentId: string) => {
+        const userDoc = await getDoc(doc(db, "users", studentId));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+
+          let completedOn = "";
+          if (userData.interviews) {
+            const matchingInterview = userData.interviews.find(
+              (i: any) => i.interviewId === interview.id
+            );
+            if (matchingInterview) {
+              completedOn = matchingInterview.completedOn;
+            }
+          }
+
+          return {
+            id: userDoc.id,
+            uid: userData.uid || userDoc.id,
+            name: userData.name || "Unknown",
+            email: userData.email || "",
+            photoURL: userData.photoURL || "",
+            completedOn,
+          };
+        }
+        return null;
+      });
+
+      const fetchedStudents = (await Promise.all(studentPromises)).filter(
+        (student) => student !== null
+      ) as Student[];
+
+      fetchedStudents.sort((a, b) => {
+        if (!a.completedOn) return 1;
+        if (!b.completedOn) return -1;
+        return new Date(b.completedOn).getTime() - new Date(a.completedOn).getTime();
+      });
+
+      setStudents(fetchedStudents);
     } catch (error) {
-      console.error("Error creating interview:", error);
+      console.error("Error fetching students:", error);
+    } finally {
+      setLoadingStudents(false);
     }
+  };
+
+  const navigateToCandidate = (studentId: string) => {
+    navigate(`/candidate/${studentId}`);
+    setIsStudentModalOpen(false);
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "Unknown date";
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
   };
 
   return (
@@ -172,18 +252,97 @@ export const InterviewerDashboard: React.FC<InterviewerDashboardProps> = ({
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {interviews.map((interview) => (
-              <InterviewCard key={interview.id} interview={interview} />
+              <InterviewCard
+                key={interview.id}
+                interview={interview}
+                onViewStudents={() => handleViewStudents(interview)}
+              />
             ))}
           </div>
         )}
       </div>
 
-      {/* Create Interview Modal - only used if onCreateInterview prop is not provided */}
       {!onCreateInterview && (
         <CreateInterviewModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
         />
+      )}
+
+      {isStudentModalOpen && selectedInterview && (
+        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
+            <div className="flex justify-between items-center px-6 py-4 border-b">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {selectedInterview.title} - Students
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {selectedInterview.students?.length || 0} students have completed this interview
+                </p>
+              </div>
+              <button
+                className="text-gray-500 hover:text-gray-700"
+                onClick={() => setIsStudentModalOpen(false)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-6">
+              {loadingStudents ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 size={32} className="text-blue-500 animate-spin mr-2" />
+                  <p className="text-gray-600">Loading students...</p>
+                </div>
+              ) : students.length > 0 ? (
+                <div className="divide-y divide-gray-100">
+                  {students.map((student) => (
+                    <div
+                      key={student.id}
+                      className="py-4 flex items-center justify-between hover:bg-gray-50 rounded-lg cursor-pointer px-3"
+                      onClick={() => navigateToCandidate(student.id)}
+                    >
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 rounded-full bg-gray-200 flex-shrink-0 overflow-hidden">
+                          {student.photoURL ? (
+                            <img
+                              src={student.photoURL}
+                              alt={student.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <User size={24} className="h-full w-full p-2 text-gray-600" />
+                          )}
+                        </div>
+                        <div className="ml-4">
+                          <div className="font-medium text-gray-900">{student.name}</div>
+                          <div className="text-gray-600 text-sm">{student.email}</div>
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        Completed on {formatDate(student.completedOn)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No students have completed this interview yet.
+                </div>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t bg-gray-50 rounded-b-lg">
+              <div className="flex justify-end">
+                <button
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                  onClick={() => setIsStudentModalOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
