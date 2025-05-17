@@ -4,9 +4,9 @@ import Sidebar from './Sidebar';
 
 const Layout: React.FC = () => {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-full">
       <Sidebar />
-      <main className="flex-1 p-6">
+      <main className="flex-1 p-6 h-full overflow-y-auto">
         <Outlet />
       </main>
     </div>

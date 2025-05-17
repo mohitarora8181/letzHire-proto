@@ -6,9 +6,9 @@ import { useAuth } from '../context/AuthContext'; // Import useAuth to get user 
 
 const StudentLayout: React.FC = () => {
     return (
-        <div className="flex min-h-screen bg-gray-50">
+        <div className="flex h-full bg-gray-50">
             <StudentSidebar />
-            <main className="flex-1 p-6">
+            <main className="flex-1 p-6 h-full overflow-y-auto">
                 <Outlet />
             </main>
         </div>
