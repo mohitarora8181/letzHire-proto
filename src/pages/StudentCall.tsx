@@ -46,7 +46,7 @@ const createTavusConversation = async (systemPrompt: string) => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': 'e44ed5c471c34e53ab1f248b1433b180'
+                'x-api-key': import.meta.env.VITE_TAVUS_APIKEY
             },
             body: JSON.stringify({
                 conversation_name: "Alex",
@@ -227,7 +227,7 @@ const StudentCall: React.FC = () => {
             setMessages([]);
 
             // Start the call with configuration
-            const call = await vapi.start("d3751e31-cf3c-49d8-a0c0-6e951acee68d");
+            const call = await vapi.start(import.meta.env.VITE_VAPI_ASSISTANT_ID);
 
             // Store the call ID
             if (call && call.id) {
