@@ -12,28 +12,46 @@ import StudentLayout from "./components/StudentLayout";
 import InterviewListPage from "./components/ai-interview/InterviewListPage";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
+import ProtectedRoute from "./components/ProtectedRoute";
+import { AuthProvider } from "./context/AuthContext";
 
 function App() {
   return (
-    <Routes>
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
 
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="search" element={<SearchPage />} />
+          <Route path="jobs" element={<OpenJobsPage />} />
+          <Route path="jobs/:id" element={<JobDetailsPage />} />
+          <Route path="ai-interview" element={<InterviewerDashboard />} />
+          <Route path="team" element={<HiredTeamPage />} />
+          <Route path="candidate/:id" element={<CandidateDetailsPage />} />
+        </Route>
 
-      <Route path="/" element={<Layout />}>
-        <Route path="search" element={<SearchPage />} />
-        <Route path="jobs" element={<OpenJobsPage />} />
-        <Route path="jobs/:id" element={<JobDetailsPage />} />
-        <Route path="ai-interview" element={<InterviewerDashboard />} />
-        <Route path="team" element={<HiredTeamPage />} />
-        <Route path="candidate/:id" element={<CandidateDetailsPage />} />
-      </Route>
-      <Route path="/student" element={<StudentLayout />}>
-        <Route path="interviews" element={<InterviewListPage />} />
-        <Route path="interview/:id" element={<StudentCall />} />
-        <Route index element={<InterviewListPage />} />
-      </Route>
-    </Routes>
+        <Route
+          path="/student"
+          element={
+            <ProtectedRoute>
+              <StudentLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="interviews" element={<InterviewListPage />} />
+          <Route path="interview/:id" element={<StudentCall />} />
+          <Route index element={<InterviewListPage />} />
+        </Route>
+      </Routes>
+    </AuthProvider>
   );
 }
 

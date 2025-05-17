@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { getInterviews } from "../api/getInterview";
+import { createInterview } from "../api/createInterview";
 import { Search, Plus, Filter, Download, BarChart } from "lucide-react";
 import { StatsCard } from "../components/ai-interview/StatusCard";
 import { InterviewCard } from "../components/ai-interview/InterviewCard";
@@ -13,48 +15,31 @@ export const InterviewerDashboard: React.FC<InterviewerDashboardProps> = ({
 }) => {
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [interviews, setInterviews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const interviews = [
-    {
-      id: 1,
-      title: "Node.js",
-      technologies: [{ name: "Node.js", color: "bg-green-100 text-green-800" }],
-      status: "Practicing: Enabled",
-      invited: 0,
-      taken: 0,
-      createdOn: "May 19, 2023",
-      hasOpenJob: true,
-    },
-    {
-      id: 2,
-      title: "Front-end Developer (React.js)",
-      technologies: [
-        { name: "React.js", color: "bg-blue-100 text-blue-800" },
-        { name: "JavaScript", color: "bg-yellow-100 text-yellow-800" },
-        { name: "Redux", color: "bg-purple-100 text-purple-800" },
-        { name: "GraphQL", color: "bg-pink-100 text-pink-800" },
-        { name: "Jest", color: "bg-red-100 text-red-800" },
-      ],
-      status: "Practicing: Enabled",
-      codingExercise: true,
-      invited: 1,
-      taken: 0,
-      createdOn: "May 14, 2023",
-      hasOpenJob: false,
-      highlighted: true,
-    },
-    {
-      id: 3,
-      title: "Front-end developer",
-      technologies: [{ name: "React.js", color: "bg-blue-100 text-blue-800" }],
-      status: "Practicing: Enabled",
-      codingExercise: true,
-      invited: 1,
-      taken: 0,
-      createdOn: "May 11, 2023",
-      hasOpenJob: true,
-    },
-  ];
+  const [total, setTotal] = useState(0);
+  const [active, setActive] = useState(0);
+  const [completed, setCompleted] = useState(0);
+  const [averageScore, setAverageScore] = useState("8.4");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const data = await getInterviews();
+      setInterviews(data);
+      setLoading(false);
+
+      setTotal(data.length);
+      const activeCount = data.filter((i: any) => i.taken < i.invited).length;
+      const completedCount = data.filter(
+        (i: any) => i.taken >= i.invited
+      ).length;
+      setActive(activeCount);
+      setCompleted(completedCount);
+    };
+
+    fetchData();
+  }, []);
 
   const handleDefineNewInterview = () => {
     setIsCreateMenuOpen(false);
@@ -63,6 +48,16 @@ export const InterviewerDashboard: React.FC<InterviewerDashboardProps> = ({
       onCreateInterview();
     } else {
       setIsCreateModalOpen(true);
+    }
+  };
+
+  const handleInterviewCreate = async (interviewData: any) => {
+    try {
+      const created = await createInterview(interviewData);
+      setInterviews((prev) => [created, ...prev]);
+      setIsCreateModalOpen(false);
+    } catch (error) {
+      console.error("Error creating interview:", error);
     }
   };
 
@@ -122,25 +117,25 @@ export const InterviewerDashboard: React.FC<InterviewerDashboardProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatsCard
             title="Total Interviews"
-            value="12"
+            value={total.toString()}
             trend="+33% this month"
             className="bg-white border border-gray-100"
           />
           <StatsCard
             title="Active Interviews"
-            value="8"
+            value={active.toString()}
             trend="+2 this week"
             className="bg-white border border-gray-100"
           />
           <StatsCard
             title="Completed Interviews"
-            value="45"
+            value={completed.toString()}
             trend="+12% vs last month"
             className="bg-white border border-gray-100"
           />
           <StatsCard
             title="Average Score"
-            value="8.4"
+            value={averageScore}
             trend="No change"
             className="bg-white border border-gray-100"
           />
@@ -172,11 +167,15 @@ export const InterviewerDashboard: React.FC<InterviewerDashboardProps> = ({
         </div>
 
         {/* Interviews Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {interviews.map((interview) => (
-            <InterviewCard key={interview.id} interview={interview} />
-          ))}
-        </div>
+        {loading ? (
+          <div>Loading interviews...</div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {interviews.map((interview) => (
+              <InterviewCard key={interview.id} interview={interview} />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Create Interview Modal - only used if onCreateInterview prop is not provided */}

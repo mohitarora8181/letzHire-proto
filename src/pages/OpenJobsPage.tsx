@@ -1,69 +1,72 @@
-import React, { useState } from 'react';
-import { Plus, Filter } from 'lucide-react';
-import Button from '../components/common/Button';
-import Input from '../components/common/Input';
-import JobCard from '../components/jobs/JobCard';
-import CreateJobModal from '../components/jobs/CreateJobModal';
-
-const mockJobs = [
-  {
-    id: '1',
-    title: 'Front-end Developer (React.js)',
-    date: 'May 11, 2025',
-    owner: 'Nirmal Kumar Meher',
-    applicants: 31,
-    vetted: 0,
-    jobType: ['Full Time', 'Remote'],
-    budget: '$100.00 - $200.00',
-    skills: ['1 skill'],
-    openings: 1
-  },
-  {
-    id: '2',
-    title: 'Senior React Native Developer',
-    date: 'May 10, 2025',
-    owner: 'Priya Sharma',
-    applicants: 24,
-    vetted: 12,
-    jobType: ['Contract', 'Remote'],
-    budget: '$90.00 - $120.00',
-    skills: ['React Native', 'TypeScript'],
-    openings: 2
-  },
-  {
-    id: '3',
-    title: 'Full Stack JavaScript Engineer',
-    date: 'May 8, 2025',
-    owner: 'John Smith',
-    applicants: 47,
-    vetted: 19,
-    jobType: ['Full Time', 'Hybrid'],
-    budget: '$120.00 - $150.00',
-    skills: ['Node.js', 'React', 'MongoDB'],
-    openings: 3
-  }
-];
+import React, { useState, useEffect } from "react";
+import { Plus, Filter } from "lucide-react";
+import Button from "../components/common/Button";
+import Input from "../components/common/Input";
+import JobCard from "../components/jobs/JobCard";
+import CreateJobModal from "../components/jobs/CreateJobModal";
+import { db } from "../firebase";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  Timestamp,
+  query,
+  orderBy,
+} from "firebase/firestore";
 
 const OpenJobsPage: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [jobs, setJobs] = useState(mockJobs);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [jobs, setJobs] = useState<any[]>([]);
 
-  const handleCreateJob = (jobData: any) => {
+  // ✅ Fetch jobs from Firestore on mount
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const q = query(collection(db, "jobs"), orderBy("date", "desc")); // optional: sort by date
+        const querySnapshot = await getDocs(q);
+
+        const jobsData = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        setJobs(jobsData);
+      } catch (error) {
+        console.error("Error fetching jobs: ", error);
+      }
+    };
+
+    fetchJobs();
+  }, []);
+
+  const handleCreateJob = async (jobData: any) => {
     const newJob = {
-      id: (jobs.length + 1).toString(),
       title: jobData.title,
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      owner: 'Current User',
+      date: new Date().toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+      owner: "Current User",
       applicants: 0,
       vetted: 0,
       jobType: [jobData.jobType],
-      budget: jobData.minBudget && jobData.maxBudget ? `₹${jobData.minBudget} - ₹${jobData.maxBudget}` : 'Not specified',
-      skills: jobData.skills.split(',').map((s: string) => s.trim()),
-      openings: parseInt(jobData.hires, 10)
+      budget:
+        jobData.minBudget && jobData.maxBudget
+          ? `₹${jobData.minBudget} - ₹${jobData.maxBudget}`
+          : "Not specified",
+      skills: jobData.skills.split(",").map((s: string) => s.trim()),
+      openings: parseInt(jobData.hires, 10),
     };
 
-    setJobs([newJob, ...jobs]);
+    try {
+      const docRef = await addDoc(collection(db, "jobs"), newJob);
+      console.log("Document written with ID: ", docRef.id);
+      setJobs([{ id: docRef.id, ...newJob }, ...jobs]);
+    } catch (e) {
+      console.error("Error adding document: ", e);
+    }
   };
 
   return (
@@ -71,10 +74,7 @@ const OpenJobsPage: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-xl font-semibold">Open a job ({jobs.length})</h1>
         <div className="flex gap-2">
-          <Button
-            variant="secondary"
-            className="text-sm"
-          >
+          <Button variant="secondary" className="text-sm">
             Closed jobs
           </Button>
           <Button
@@ -103,9 +103,13 @@ const OpenJobsPage: React.FC = () => {
       </div>
 
       <div className="space-y-4">
-        {jobs.map((job) => (
-          <JobCard key={job.id} {...job} />
-        ))}
+        {jobs
+          .filter((job) =>
+            job.title.toLowerCase().includes(searchQuery.toLowerCase())
+          )
+          .map((job) => (
+            <JobCard key={job.id} {...job} />
+          ))}
       </div>
 
       <CreateJobModal
