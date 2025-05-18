@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { getInterviews } from "../api/getInterview";
 import { createInterview } from "../api/createInterview";
-import { Search, Plus, Filter, Download, BarChart, User, X, Loader2 } from "lucide-react";
-import { StatsCard } from "../components/ai-interview/StatusCard";
+import {
+  Search,
+  Plus,
+  Filter,
+  Download,
+  BarChart,
+  User,
+  X,
+  Loader2,
+} from "lucide-react";
+import { StatsCard } from "../components/ai-interview/StatsCard";
 import { InterviewCard } from "../components/ai-interview/InterviewCard";
 import { CreateInterviewModal } from "../components/ai-interview/modals/CreateInterviewModal";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
@@ -82,32 +91,34 @@ export const InterviewerDashboard: React.FC<InterviewerDashboardProps> = ({
         return;
       }
 
-      const studentPromises = interview.students.map(async (studentId: string) => {
-        const userDoc = await getDoc(doc(db, "users", studentId));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
+      const studentPromises = interview.students.map(
+        async (studentId: string) => {
+          const userDoc = await getDoc(doc(db, "users", studentId));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
 
-          let completedOn = "";
-          if (userData.interviews) {
-            const matchingInterview = userData.interviews.find(
-              (i: any) => i.interviewId === interview.id
-            );
-            if (matchingInterview) {
-              completedOn = matchingInterview.completedOn;
+            let completedOn = "";
+            if (userData.interviews) {
+              const matchingInterview = userData.interviews.find(
+                (i: any) => i.interviewId === interview.id
+              );
+              if (matchingInterview) {
+                completedOn = matchingInterview.completedOn;
+              }
             }
-          }
 
-          return {
-            id: userDoc.id,
-            uid: userData.uid || userDoc.id,
-            name: userData.name || "Unknown",
-            email: userData.email || "",
-            photoURL: userData.photoURL || "",
-            completedOn,
-          };
+            return {
+              id: userDoc.id,
+              uid: userData.uid || userDoc.id,
+              name: userData.name || "Unknown",
+              email: userData.email || "",
+              photoURL: userData.photoURL || "",
+              completedOn,
+            };
+          }
+          return null;
         }
-        return null;
-      });
+      );
 
       const fetchedStudents = (await Promise.all(studentPromises)).filter(
         (student) => student !== null
@@ -116,7 +127,9 @@ export const InterviewerDashboard: React.FC<InterviewerDashboardProps> = ({
       fetchedStudents.sort((a, b) => {
         if (!a.completedOn) return 1;
         if (!b.completedOn) return -1;
-        return new Date(b.completedOn).getTime() - new Date(a.completedOn).getTime();
+        return (
+          new Date(b.completedOn).getTime() - new Date(a.completedOn).getTime()
+        );
       });
 
       setStudents(fetchedStudents);
@@ -134,10 +147,10 @@ export const InterviewerDashboard: React.FC<InterviewerDashboardProps> = ({
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "Unknown date";
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
@@ -147,22 +160,22 @@ export const InterviewerDashboard: React.FC<InterviewerDashboardProps> = ({
         {/* Header Section */}
         <div className="flex justify-between items-start mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2 animate-fadeIn">
               AI Interviewer
             </h1>
-            <p className="text-gray-500">
+            <p className="text-gray-500 animate-fadeIn">
               Create and manage your AI-powered interview processes
             </p>
           </div>
           <div className="flex space-x-3">
-            <button className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+            <button className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 hover:shadow-md active:scale-95">
               <BarChart size={18} className="mr-2" />
               View Analytics
             </button>
             <div className="relative">
               <button
                 onClick={() => setIsCreateMenuOpen(!isCreateMenuOpen)}
-                className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-all duration-200 hover:shadow-md active:scale-95"
               >
                 <Plus size={18} className="mr-2" />
                 Create new interview
@@ -222,7 +235,7 @@ export const InterviewerDashboard: React.FC<InterviewerDashboardProps> = ({
         </div>
 
         {/* Search and Filter Section */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6 animate-slide-in-up">
           <div className="flex-1 min-w-[280px] max-w-xl relative">
             <Search
               className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
@@ -248,7 +261,9 @@ export const InterviewerDashboard: React.FC<InterviewerDashboardProps> = ({
 
         {/* Interviews Grid */}
         {loading ? (
-          <div>Loading interviews...</div>
+          <div className="animate-pulse h-full w-full">
+            Loading interviews...
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {interviews.map((interview) => (
@@ -270,19 +285,26 @@ export const InterviewerDashboard: React.FC<InterviewerDashboardProps> = ({
       )}
 
       {isStudentModalOpen && selectedInterview && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
+        <div
+          className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-0 flex items-center justify-center p-4 animate-modal-backdrop"
+          onClick={() => setIsStudentModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col animate-modal-content"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-between items-center px-6 py-4 border-b">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
                   {selectedInterview.title} - Students
                 </h3>
                 <p className="text-sm text-gray-500">
-                  {selectedInterview.students?.length || 0} students have completed this interview
+                  {selectedInterview.students?.length || 0} students have
+                  completed this interview
                 </p>
               </div>
               <button
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 hover:rotate-90 transition-transform duration-300"
                 onClick={() => setIsStudentModalOpen(false)}
               >
                 <X size={20} />
@@ -290,17 +312,23 @@ export const InterviewerDashboard: React.FC<InterviewerDashboardProps> = ({
             </div>
             <div className="flex-1 overflow-auto p-6">
               {loadingStudents ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 size={32} className="text-blue-500 animate-spin mr-2" />
+                <div className="flex items-center justify-center py-8 animate-fade-in">
+                  <Loader2
+                    size={32}
+                    className="text-blue-500 animate-spin mr-2"
+                  />
                   <p className="text-gray-600">Loading students...</p>
                 </div>
               ) : students.length > 0 ? (
                 <div className="divide-y divide-gray-100">
-                  {students.map((student) => (
+                  {students.map((student, index) => (
                     <div
                       key={student.id}
-                      className="py-4 flex items-center justify-between hover:bg-gray-50 rounded-lg cursor-pointer px-3"
+                      className="py-4 flex items-center justify-between hover:bg-gray-50 rounded-lg cursor-pointer px-3 animate-list-item"
                       onClick={() => navigateToCandidate(student.id)}
+                      style={{
+                        animationDelay: `${index * 100}ms`,
+                      }}
                     >
                       <div className="flex items-center">
                         <div className="h-10 w-10 rounded-full bg-gray-200 flex-shrink-0 overflow-hidden">
@@ -311,12 +339,19 @@ export const InterviewerDashboard: React.FC<InterviewerDashboardProps> = ({
                               className="h-full w-full object-cover"
                             />
                           ) : (
-                            <User size={24} className="h-full w-full p-2 text-gray-600" />
+                            <User
+                              size={24}
+                              className="h-full w-full p-2 text-gray-600"
+                            />
                           )}
                         </div>
                         <div className="ml-4">
-                          <div className="font-medium text-gray-900">{student.name}</div>
-                          <div className="text-gray-600 text-sm">{student.email}</div>
+                          <div className="font-medium text-gray-900">
+                            {student.name}
+                          </div>
+                          <div className="text-gray-600 text-sm">
+                            {student.email}
+                          </div>
                         </div>
                       </div>
                       <div className="text-sm text-gray-500">
@@ -326,7 +361,7 @@ export const InterviewerDashboard: React.FC<InterviewerDashboardProps> = ({
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-gray-500 animate-fade-in">
                   No students have completed this interview yet.
                 </div>
               )}
@@ -334,7 +369,7 @@ export const InterviewerDashboard: React.FC<InterviewerDashboardProps> = ({
             <div className="px-6 py-4 border-t bg-gray-50 rounded-b-lg">
               <div className="flex justify-end">
                 <button
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 hover:shadow-md active:scale-95"
                   onClick={() => setIsStudentModalOpen(false)}
                 >
                   Close
