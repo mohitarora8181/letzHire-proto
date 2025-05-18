@@ -72,7 +72,7 @@ const CandidateCard: React.FC<CandidateProps> = ({
       <div className="flex items-start gap-4">
         {/* Profile Image */}
         <img
-          src={photo || "https://via.placeholder.com/150?text=" + name.charAt(0)}
+          src={photo || `https://ui-avatars.com/api/?name=${name}&background=random`}
           alt={name}
           className="w-16 h-16 rounded-full object-cover border-2 border-gray-100"
         />
@@ -88,9 +88,6 @@ const CandidateCard: React.FC<CandidateProps> = ({
                 </span>
               )}
             </div>
-            <button className="text-gray-500 hover:text-gray-700">
-              <MoreVertical size={20} />
-            </button>
           </div>
 
           {/* Student info line */}

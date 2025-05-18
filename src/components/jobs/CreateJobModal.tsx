@@ -131,7 +131,7 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({ isOpen, onClose, onSave
               name="minBudget"
               value={jobData.minBudget}
               onChange={handleChange}
-              placeholder="$"
+              placeholder="₹"
             />
           </div>
           
@@ -144,7 +144,7 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({ isOpen, onClose, onSave
               name="maxBudget"
               value={jobData.maxBudget}
               onChange={handleChange}
-              placeholder="$"
+              placeholder="₹"
             />
           </div>
         </div>

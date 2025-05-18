@@ -72,7 +72,7 @@ const SearchPage: React.FC = () => {
             uid: userData.uid || doc.id,
             name: userData.name || "Unknown",
             email: userData.email || "",
-            photoURL: userData.photoURL || "https://via.placeholder.com/150",
+            photoURL: userData.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random`,
             interviews: userData.interviews || [],
             // Set some default values for fields that might not be in Firestore yet
             position: userData.position || "Student",
@@ -83,7 +83,7 @@ const SearchPage: React.FC = () => {
             salary: userData.salary || "Not specified",
             hourlyRate: userData.hourlyRate || "Not specified",
             verified: userData.verified || false,
-            description: userData.description || `${userData.name} is a student on our platform with ${userData.interviews?.length || 0} completed interviews.`,
+            description: userData.description || ``,
           };
 
           fetchedCandidates.push(candidate);
@@ -234,20 +234,10 @@ const SearchPage: React.FC = () => {
               <Filter size={16} className="mr-1" />
               Filters {Object.keys(activeFilters).length > 0 && `(${Object.keys(activeFilters).length})`}
             </Button>
-            <Button type="button" variant="secondary" size="sm" className="h-8">
-              <Heart size={16} className="mr-1" />
-              View favorites
-            </Button>
           </div>
         </form>
 
         <div className="flex justify-between items-center">
-          <Button variant="outline" size="sm" className="flex items-center gap-1">
-            <span>Sort by</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-1">
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-          </Button>
           {Object.keys(activeFilters).length > 0 && (
             <Button
               variant="outline"
@@ -277,7 +267,7 @@ const SearchPage: React.FC = () => {
               hourlyRate={candidate.hourlyRate || "Not specified"}
               verified={candidate.verified || false}
               description={candidate.description || ""}
-              photo={candidate.photoURL || "https://via.placeholder.com/150"}
+              photo={candidate.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(candidate.name)}&background=random`}
               interviews={candidate.interviews}
             />
           ))

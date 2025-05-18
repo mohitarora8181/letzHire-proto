@@ -244,7 +244,7 @@ const CandidateDetailsPage: React.FC = () => {
               </div>
 
               <div className="text-sm text-gray-600 mt-2">
-                {candidate.country || "Location not specified"} {candidate.countryFlag || "🌎"}
+                {candidate.country || "Location not specified"} {candidate.countryFlag || "🇮🇳"}
               </div>
 
               <div className="text-sm mt-2">
@@ -265,27 +265,16 @@ const CandidateDetailsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-6">
+            {/* <div className="mt-6">
               <p className="text-sm text-gray-700">
                 {candidate.description || `${candidate.name} is a student on our platform with ${candidate.interviews?.length || 0} completed interviews.`}
               </p>
-            </div>
+            </div> */}
 
-            <div className="mt-6 grid grid-cols-2 gap-2">
+            <div className="mt-6 grid grid-cols-1 gap-2">
               <Button className="w-full">
                 Request interview
               </Button>
-              <Button variant="secondary" className="w-full flex items-center justify-center">
-                <Heart size={16} className="mr-1" />
-                Save
-              </Button>
-            </div>
-
-            <div className="mt-4 text-center">
-              <button className="text-indigo-600 text-sm hover:text-indigo-800 flex items-center justify-center w-full">
-                <Copy size={14} className="mr-1" />
-                Find similar candidates
-              </button>
             </div>
           </div>
         </div>

@@ -67,7 +67,6 @@ const StudentSidebar: React.FC = () => {
                     />
                     <div className="flex-1">
                         <p className="text-sm font-medium">{userData?.name || "Student"}</p>
-                        <p className="text-xs text-gray-500">Student</p>
                     </div>
                 </div>
 

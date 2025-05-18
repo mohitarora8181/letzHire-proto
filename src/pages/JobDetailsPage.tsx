@@ -7,6 +7,7 @@ import {
   Briefcase,
   MapPin,
   DollarSign,
+  IndianRupee,
 } from "lucide-react";
 import Button from "../components/common/Button";
 import Badge from "../components/common/Badge";
@@ -19,6 +20,7 @@ interface JobDetails {
   date: string;
   owner: string;
   applicants: number;
+  location: string;
   vetted: number;
   jobType: string[];
   budget: string;
@@ -110,9 +112,9 @@ const JobDetailsPage: React.FC = () => {
             <InfoItem
               icon={<MapPin />}
               label="Location"
-              value={"Not specified"}
+              value={job.location || "Not specified"}
             />
-            <InfoItem icon={<DollarSign />} label="Budget" value={job.budget} />
+            <InfoItem icon={<IndianRupee />} label="Budget" value={job.budget} />
             <InfoItem
               icon={<Users />}
               label="Openings"

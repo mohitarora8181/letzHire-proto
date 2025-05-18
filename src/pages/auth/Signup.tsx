@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Mail, Lock, User, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, Briefcase, MapPin, Image } from "lucide-react";
 import {
   getAuth,
   createUserWithEmailAndPassword,
@@ -19,6 +19,10 @@ const Signup: React.FC = () => {
     email: "",
     password: "",
     confirmPassword: "",
+    country: "India", // Default value
+    experience: "",
+    position: "",
+    photoURL: ""
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -26,7 +30,7 @@ const Signup: React.FC = () => {
 
   const auth = getAuth();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -36,7 +40,7 @@ const Signup: React.FC = () => {
     setError("");
 
     if (!formData.name || !formData.email || !formData.password) {
-      setError("Please fill in all fields");
+      setError("Please fill in all required fields");
       return;
     }
 
@@ -62,9 +66,10 @@ const Signup: React.FC = () => {
 
       const user = userCredential.user;
 
-      // Update profile with the full name
+      // Update profile with the full name and photo URL
       await updateProfile(user, {
         displayName: formData.name,
+        photoURL: formData.photoURL || null,
       });
 
       // Initialize Firestore
@@ -74,9 +79,12 @@ const Signup: React.FC = () => {
       await setDoc(doc(db, "users", user.uid), {
         name: formData.name,
         email: formData.email,
+        country: formData.country,
+        experience: formData.experience ? parseInt(formData.experience, 10) : 0,
+        position: formData.position,
+        photoURL: formData.photoURL || "",
         isHR: false,
         createdAt: new Date(),
-        photoURL: user.photoURL || "",
         uid: user.uid
       });
 
@@ -104,7 +112,7 @@ const Signup: React.FC = () => {
   return (
     <div className="h-full overflow-y-auto bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md mt-48">
-        <div className="flex justify-center">
+        <div className="flex pt-80 justify-center">
           <span className="rounded-full overflow-hidden h-20 w-20">
             <img src={"/logo.png"} alt="LetzHire" className="w-auto object-cover" />
           </span>
@@ -148,7 +156,7 @@ const Signup: React.FC = () => {
                 htmlFor="name"
                 className="block text-sm font-medium text-gray-700"
               >
-                Full name
+                Full name *
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -173,7 +181,7 @@ const Signup: React.FC = () => {
                 htmlFor="email"
                 className="block text-sm font-medium text-gray-700"
               >
-                Email address
+                Email address *
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -193,12 +201,116 @@ const Signup: React.FC = () => {
               </div>
             </div>
 
+            {/* Position field */}
+            <div>
+              <label
+                htmlFor="position"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Position/Role
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Briefcase className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="position"
+                  name="position"
+                  type="text"
+                  value={formData.position}
+                  onChange={handleChange}
+                  className="pl-10 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                  placeholder="e.g. Full Stack Developer"
+                />
+              </div>
+            </div>
+
+            {/* Country field */}
+            <div>
+              <label
+                htmlFor="country"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Country
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <MapPin className="h-5 w-5 text-gray-400" />
+                </div>
+                <select
+                  id="country"
+                  name="country"
+                  value={formData.country}
+                  onChange={handleChange}
+                  className="pl-10 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                >
+                  <option value="India">India</option>
+                  <option value="United States">United States</option>
+                  <option value="United Kingdom">United Kingdom</option>
+                  <option value="Canada">Canada</option>
+                  <option value="Australia">Australia</option>
+                  <option value="Germany">Germany</option>
+                  <option value="France">France</option>
+                  <option value="Japan">Japan</option>
+                  <option value="Singapore">Singapore</option>
+                  {/* Add more countries as needed */}
+                </select>
+              </div>
+            </div>
+
+            {/* Experience field */}
+            <div>
+              <label
+                htmlFor="experience"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Experience (years)
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <input
+                  id="experience"
+                  name="experience"
+                  type="number"
+                  min="0"
+                  max="50"
+                  value={formData.experience}
+                  onChange={handleChange}
+                  className="focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                  placeholder="e.g. 3"
+                />
+              </div>
+            </div>
+
+            {/* Photo URL field */}
+            <div>
+              <label
+                htmlFor="photoURL"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Profile Photo URL
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Image className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="photoURL"
+                  name="photoURL"
+                  type="url"
+                  value={formData.photoURL}
+                  onChange={handleChange}
+                  className="pl-10 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                  placeholder="https://example.com/your-photo.jpg"
+                />
+              </div>
+            </div>
+
             <div>
               <label
                 htmlFor="password"
                 className="block text-sm font-medium text-gray-700"
               >
-                Password
+                Password *
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -238,7 +350,7 @@ const Signup: React.FC = () => {
                 htmlFor="confirmPassword"
                 className="block text-sm font-medium text-gray-700"
               >
-                Confirm Password
+                Confirm Password *
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
