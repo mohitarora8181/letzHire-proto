@@ -255,7 +255,7 @@ const SearchPage: React.FC = () => {
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex space-x-2">
               <Button
                 type="button"
-                className="h-10 px-4 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors duration-200 shadow-sm"
+                className="h-10 px-4 bg-white text-gray-950 hover:text-white border border-gray-300 hover:bg-gray-50 transition-colors duration-200 shadow-sm"
                 onClick={() => setShowFilters(true)}
               >
                 <Filter size={16} className="mr-2" />
